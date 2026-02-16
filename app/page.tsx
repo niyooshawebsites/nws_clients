@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,35 +11,60 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 
-import { useActionState } from "react";
-import { signup } from "@/app/actions/createUser";
+export default function LoginPage() {
+  const router = useRouter(); // ✅ get router
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-const initialState = {
-  error: undefined,
-  success: undefined,
-};
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setErr(null);
+    setMsg(null);
 
-export default function Home() {
-  const [state, formAction] = useActionState(signup, initialState);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErr(data.error || "Something went wrong");
+        return;
+      }
+
+      setMsg("Logged in successfully!");
+      form.reset();
+
+      // ✅ Client-side navigation without full page reload
+      router.push("/dashboard");
+    } catch (error: any) {
+      setErr(error.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <>
-      <h1 className="text-center text-3xl">NWS CRM</h1>
-      <form className="max-w-md mx-auto p-4" action={formAction}>
+    <div className="max-w-md mx-auto p-4">
+      <h1 className="text-center text-3xl mb-4">NWS CRM</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <FieldGroup className="border p-5 rounded-md">
           <Field>
-            <FieldLabel htmlFor="email">Name</FieldLabel>
-            <FieldDescription>Enter your name.</FieldDescription>
-            <Input type="text" name="name" id="name" placeholder="John Doe" />
-          </Field>
-          <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
-            <FieldDescription>Enter your email.</FieldDescription>
+            <FieldDescription>Enter your email</FieldDescription>
             <Input
               type="email"
               name="email"
               id="email"
               placeholder="john@example.com"
+              required
             />
           </Field>
 
@@ -48,21 +75,22 @@ export default function Home() {
               type="password"
               name="password"
               id="password"
-              placeholder="***********"
+              placeholder="********"
+              required
             />
           </Field>
 
           <Button
             type="submit"
-            variant="secondary"
-            className="bg-gray-900 text-gray-100 hover:bg-gray-950 hover:cursor-pointer"
+            className="bg-gray-900 text-gray-100 hover:bg-gray-950"
           >
-            Sign up
+            {loading ? "Signing in..." : "Sign in"}
           </Button>
+
+          {msg && <p className="text-green-600 font-medium">{msg}</p>}
+          {err && <p className="text-red-600 font-medium">{err}</p>}
         </FieldGroup>
-        {state.error && <p className="text-red-500">{state.error}</p>}
-        {state.success && <p className="text-green-500">{state.success}</p>}
       </form>
-    </>
+    </div>
   );
 }
